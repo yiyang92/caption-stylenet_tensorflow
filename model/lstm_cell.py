@@ -13,8 +13,9 @@ class FactoredLSTMCell(LayerRNNCell):
     def __init__(self,
                  num_units,
                  s,
-                 u=None,
-                 v=None,
+                 u,
+                 v,
+                 wh=None,
                  activation=None,
                  forget_bias=1.0,
                  reuse=None,
@@ -29,6 +30,7 @@ class FactoredLSTMCell(LayerRNNCell):
         self._s = s  # variable shape [fact_e, fact_e]
         self._u = u  # if not None, variable shape [embed_size, fact_e]
         self._v = v  # if not None, variable shape [fact_e, 4 * n_units]
+        self._wh = wh
 
     @property
     def state_size(self):
@@ -42,54 +44,75 @@ class FactoredLSTMCell(LayerRNNCell):
         if inputs_shape[1].value is None:
           raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s"
                            % inputs_shape)
-
-        h_depth = self._num_units
-        # calculate wx = u * s * v
-        self._wx = tf.matmul(self._u, self._s)
-        self._wx = tf.matmul(self._wx, self._v)  # [embed_dims, 4 * num_units]
-        self._wh = self.add_variable('wh', [h_depth, 4 * h_depth])
-        # get w (kernel) matrix
-        self._kernel = tf.concat([self._wx, self._wh], 0)
-        self._bias = self.add_variable(
+        self._bias = tf.get_variable(
             'bias', shape=[4 * self._num_units],
             initializer=tf.zeros_initializer(dtype=self.dtype))
+        one = tf.constant(1, dtype=tf.int32)
+
+        self.ui, self.uf, self.uo, self.uc = tf.split(
+            value=self._u, num_or_size_splits=4, axis=one)
+
+        self.vi, self.vf, self.vo, self.vc = tf.split(
+            value=self._v, num_or_size_splits=4, axis=one)
+
+        self.si, self.sf, self.so, self.sc = tf.split(
+            value=self._s, num_or_size_splits=4, axis=one)
+
+        self.whi, self.whf, self.who, self.whc = tf.split(
+            value=self._wh, num_or_size_splits=4, axis=one)
 
         self.built = True
 
     def call(self, inputs, state):
-        """Long short-term memory cell (LSTM).
+        """Factorized Long short-term memory cell (LSTM).
         Args:
           inputs: `2-D` tensor with shape `[batch_size, input_size]`.
           state: An `LSTMStateTuple` of state tensors, each shaped
-            `[batch_size, num_units]`, if `state_is_tuple` has been set to
-            `True`.  Otherwise, a `Tensor` shaped
-            `[batch_size, 2 * num_units]`.
+            `[batch_size, num_units]`
         Returns:
-          A pair containing the new hidden state, and the new state (either a
-            `LSTMStateTuple` or a concatenated state, depending on
-            `state_is_tuple`).
+          A pair containing the new hidden state, and the new state (a
+            `LSTMStateTuple`).
         """
         sigmoid = tf.sigmoid
-        one = tf.constant(1, dtype=tf.int32)
-        # Parameters of gates are concatenated into one multiply for efficiency.
-        c, h = state
-
-        gate_inputs = tf.matmul(
-            tf.concat([inputs, h], 1), self._kernel)
-        gate_inputs = tf.nn.bias_add(gate_inputs, self._bias)
-
-        # i = input_gate, j = new_input(c~), f = forget_gate, o = output_gate
-        i, j, f, o = tf.split(
-            value=gate_inputs, num_or_size_splits=4, axis=one)
-
-        forget_bias_tensor = tf.constant(self._forget_bias, dtype=f.dtype)
-        # Note that using `add` and `multiply` instead of `+` and `*` gives a
-        # performance improvement. So using those at the cost of readability.
         add = tf.add
         multiply = tf.multiply
+        matmul = tf.matmul
+        # previous state
+        c, h = state
+        # bayes
+        bi, bf, bo, bc = tf.split(
+            value=self._bias, num_or_size_splits=4, axis=0)
+        # input gate
+        wi = matmul(self.ui, self.si)
+        wi = matmul(wi, self.vi)
+        i = add(matmul(inputs, wi), matmul(h, self.whi))
+        i = tf.nn.bias_add(i, bi)
+        # forget gate
+        wf = matmul(self.uf, self.sf)
+        wf = matmul(wf, self.vf)
+        f = add(matmul(inputs, wf), matmul(h, self.whf))
+        f = tf.nn.bias_add(f, bf)
+        # output gate
+        wo = matmul(self.uo, self.so)
+        wo = matmul(wo, self.vo)
+        o = add(matmul(inputs, wo), matmul(h, self.who))
+        o = tf.nn.bias_add(o, bo)
+        # ~c
+        wc = matmul(self.uc, self.sc)
+        wc = matmul(wc, self.vc)
+        _c = add(matmul(inputs, wc), matmul(h, self.whc))
+        _c = tf.nn.bias_add(_c, bc)
+        # forget bias
+        forget_bias_tensor = tf.constant(self._forget_bias, dtype=self.dtype)
+        # c
         new_c = add(multiply(c, sigmoid(add(f, forget_bias_tensor))),
-                    multiply(sigmoid(i), self._activation(j)))
+                    multiply(sigmoid(i), self._activation(_c)))
         new_h = multiply(self._activation(new_c), sigmoid(o))
+        # i = input_gate, j = new_input(c~), f = forget_gate, o = output_gate
+        # i, j, f, o = tf.split(
+        #     value=gate_inputs, num_or_size_splits=4, axis=one)
+        # Note that using `add` and `multiply` instead of `+` and `*` gives a
+        # performance improvement. So using those at the cost of readability.
         new_state = LSTMStateTuple(new_c, new_h)
         return new_h, new_state
 

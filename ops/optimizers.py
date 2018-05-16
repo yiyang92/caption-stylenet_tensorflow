@@ -15,14 +15,15 @@ def masked_loss(labels_flat, logits, mode):
     return batch_loss
 
 
-def lstm_optimizer(loss, params, mode='capt', num_ex_per_epoch=None):
+def lstm_optimizer(loss, params, learning_rate, mode='capt',
+                   num_ex_per_epoch=None):
     gradients = tf.gradients(loss, tf.trainable_variables())
     # clipped_grad = clip_by_value(gradients, -0.1, 0.1)
     clip_norm = params['lstm_clip_norm']
     clipped_grad, global_norm = tf.clip_by_global_norm(gradients, clip_norm)
     grads_vars = zip(clipped_grad, tf.trainable_variables())
     # learning rate decay
-    learning_rate = tf.constant(params['learning_rate'])
+    learning_rate = tf.constant(learning_rate)
     global_step = tf.Variable(initial_value=0, name="global_step",
                               trainable=False,
                               collections=[tf.GraphKeys.GLOBAL_STEP,
@@ -43,8 +44,7 @@ def lstm_optimizer(loss, params, mode='capt', num_ex_per_epoch=None):
             learning_rate_decay).apply_gradients(grads_vars,
                                                  global_step=global_step)
     if params['optimizer'] == 'Adam':
-        optimize = tf.train.AdamOptimizer(
-            params['learning_rate']).apply_gradients(
+        optimize = tf.train.AdamOptimizer(learning_rate).apply_gradients(
                 grads_vars, global_step=global_step)
     elif params['optimizer'] == 'Momentum':
         momentum = 0.99

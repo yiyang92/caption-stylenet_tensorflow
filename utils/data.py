@@ -13,7 +13,7 @@ from utils.image_embeddings import vgg16
 
 class Data():
     def __init__(self, images_dir, pickles_dir='./pickles',
-                 keep_words=3, n_classes=2):
+                 keep_words=3, n_classes=2, params=None):
         self.images_dir = images_dir
         self.pickles_dir = pickles_dir
         # labelled (+ unlabelled)
@@ -25,7 +25,8 @@ class Data():
         self.weights_path = './utils/vgg16_weights.npz'
         self.im_features = self._extract_features_from_dir()
         # number of classes
-        self.n_classes = n_classes
+        # self.n_classes = n_classes
+        self._params = params
 
     def _load_captions(self, f_name):
         with open(os.path.join(self.pickles_dir, f_name), 'rb') as rf:
@@ -44,6 +45,7 @@ class Data():
             self._iterable = self.test_captions.copy()
         im_names = list(self._iterable.keys())
         shuffle(im_names)
+        mult_captions = True if label == 'actual' else False
         for i, item in enumerate(im_names):
             inx = i % batch_size
             imn_batch[inx] = item
@@ -51,7 +53,7 @@ class Data():
                 # images or features
                 images = self._get_images(imn_batch, im_features)
                 captions, lengths = self._form_captions_batch(
-                    imn_batch, self._iterable, label)
+                    imn_batch, self._iterable, label, mult_captions)
                 ret = (captions, lengths, images)
                 if get_names:
                     ret += (imn_batch,)
@@ -62,16 +64,22 @@ class Data():
             images = self._get_images(imn_batch, im_features)
             captions, lengths = self._form_captions_batch(imn_batch,
                                                           self._iterable,
-                                                          label)
+                                                          label,
+                                                          mult_captions)
             ret = (captions, lengths, images)
             if get_names:
                 ret += (imn_batch,)
             yield ret
 
-    def _form_captions_batch(self, imn_batch, captions, label):
+    def _form_captions_batch(self, imn_batch, captions, label, mult_captions):
         # randomly choose 2 captions, labelled, one unlabelled
+        if mult_captions and label != 'actual':
+            print("romantic and humorous captions are unique")
+            mult_captions = False
         labelled = []
         lengths = np.zeros((len(imn_batch)))
+        if mult_captions:
+            lengths = np.zeros((len(imn_batch) * self._params['num_captions']))
         labels = {'actual': 0, 'humorous': 1, 'romantic': 2}
         label = labels[label]
         for i, imn in enumerate(imn_batch):
@@ -81,13 +89,20 @@ class Data():
             hum_c = self.dictionary.index_caption(hum_c[0])
             rom_c = self.dictionary.index_caption(rom_c[0])
             # randomly choose one of the 5 actual captions
-            rand_cap = np.random.randint(low=0, high=len(act_c))
-            act_c = self.dictionary.index_caption(act_c[rand_cap])
-            # important, label-label_index correspondance
-            cap_list = [act_c, hum_c, rom_c]
-            # what will be labelled, what unlabelled
-            labelled.append(cap_list[label])
-            lengths[i] = len(labelled[i]) - 1
+            if mult_captions and self._params['num_captions'] > 1:
+                ctr = i
+                for j in range(self._params['num_captions']):
+                    labelled.append(self.dictionary.index_caption(act_c[j]))
+                    lengths[ctr] = len(act_c[j]) - 1
+                    ctr += 1
+            else:
+                rand_cap = np.random.randint(low=0, high=len(act_c))
+                act_c = self.dictionary.index_caption(act_c[rand_cap])
+                # important, label-label_index correspondance
+                cap_list = [act_c, hum_c, rom_c]
+                # what will be labelled, what unlabelled
+                labelled.append(cap_list[label])
+                lengths[i] = len(labelled[i]) - 1
         pad_l = len(max(labelled, key=len))
         captions_inp = np.array([cap[:-1] + [0] * (
             pad_l - len(cap)) for cap in labelled])

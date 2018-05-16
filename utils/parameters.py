@@ -8,14 +8,17 @@ def parse_args():
                                      "all parameters also can be "
                                      "directly specify in the "
                                      "Parameters class")
-    parser.add_argument('--learning_rate', default=0.001,
+    parser.add_argument('--learning_rate', default=0.0002,
                         help='learning rate', type=float)
-    parser.add_argument('--embed_dim', default=256,
+    parser.add_argument('--embed_dim', default=300,
                         help='embedding size', type=int)
     parser.add_argument('--keep_words', default=1,
                         help='minimum word occurence')
     parser.add_argument('--lstm_hidden', default=512,
                         help='lstm hidden state size', type=int)
+    parser.add_argument('--num_captions', default=5,
+                        help='Num captions feeding every batch (cm_model)',
+                        type=int)
     parser.add_argument('--restore', help='whether restore',
                         action="store_true")
     parser.add_argument('--lstm_clip_norm', default=0.5,
@@ -24,11 +27,11 @@ def parse_args():
     def_img_dir = "/home/luoyy16/datasets-large/flickr30k-images/"
     parser.add_argument('--image_dir', default=def_img_dir,
                         help="flickr30k directory")
-    parser.add_argument('--epochs_actual', default=100,
+    parser.add_argument('--epochs_actual', default=80,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_humorous', default=70,
+    parser.add_argument('--epochs_humorous', default=1,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_romantic', default=70,
+    parser.add_argument('--epochs_romantic', default=1,
                         help="number of training epochs", type=int)
     parser.add_argument('--batch_size', default=128,
                         help="Batch size", type=int)
@@ -60,7 +63,7 @@ def parse_args():
                         help="test time caption generation set")
     parser.add_argument('--keep_cp', default=5,
                         help="max checkpoints to keep", type=int)
-    parser.add_argument('--gen_max', default=150,
+    parser.add_argument('--gen_max', default=50,
                         help="max caption length", type=int)
 
     args = parser.parse_args()

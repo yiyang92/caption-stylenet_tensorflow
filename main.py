@@ -17,19 +17,30 @@ PICKLES_DIR = './pickles'
 def main():
     # data
     print(params.keys())
-    data = Data(IMAGE_DIR, PICKLES_DIR, params['keep_words'])
+    data = Data(IMAGE_DIR, PICKLES_DIR, params['keep_words'], params=params)
     data_dict = data.dictionary
     # define placeholders
     capt_inputs = tf.placeholder(tf.int32, [None, None])
     capt_labels = tf.placeholder(tf.int32, [None, None])
     seq_length = tf.placeholder(tf.int32, [None])
     image_embs = tf.placeholder(tf.float32, [None, 4096])  # vgg16
+    # forward pass is expensive, so can use this method to reduce computation
+    if params['num_captions'] > 1 and params['mode'] == 'training':
+        features_tiled = tf.tile(tf.expand_dims(image_embs, 1),
+                                 [1, params['num_captions'], 1])
+        features_tiled = tf.reshape(features_tiled,
+                                    [tf.shape(image_embs
+                                              )[0] * params['num_captions'],
+                                     4096])  # [5 * b_s, 4096]
+    else:
+        features_tiled = image_embs
     model = Decoder(capt_inputs, params['lstm_hidden'],
                     params['embed_dim'], seq_length,
                     data_dict, params['lstm_hidden'], image_embs,
-                    params=params)
+                    params=params, reuse_text_emb=False)
     with tf.variable_scope("rnn", reuse=tf.AUTO_REUSE):
-        x_cmlogits, _ = model.forward(mode='train_capt')
+        x_cmlogits, _ = model.forward(mode='train_capt',
+                                      image_embs=features_tiled)
         x_lmhlogits, _ = model.forward(mode='train_lmh', lm_label='humorous')
         x_lmrlogits, _ = model.forward(mode='train_lmr', lm_label='romantic')
     # losses
@@ -38,9 +49,12 @@ def main():
     lmh_loss = masked_loss(labels_flat, x_lmhlogits, mode='train_lmh')
     lmr_loss = masked_loss(labels_flat, x_lmrlogits, mode='train_lmr')
     # optimizers
-    cm_opt = lstm_optimizer(cm_loss, params, mode='train_capt')
-    lmh_opt = lstm_optimizer(lmh_loss, params, mode='train_lmh')
-    lmr_opt = lstm_optimizer(lmr_loss, params, mode='train_lmr')
+    cm_opt = lstm_optimizer(cm_loss, params, params['learning_rate'],
+                            mode='train_capt')
+    lmh_opt = lstm_optimizer(lmh_loss, params, 0.0005,
+                             mode='train_lmh')
+    lmr_opt = lstm_optimizer(lmr_loss, params, 0.0005,
+                             mode='train_lmr')
     # train
     saver = tf.train.Saver(tf.trainable_variables(),
                            max_to_keep=params['keep_cp'])
