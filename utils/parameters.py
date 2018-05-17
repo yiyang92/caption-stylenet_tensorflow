@@ -29,9 +29,9 @@ def parse_args():
                         help="flickr30k directory")
     parser.add_argument('--epochs_actual', default=30,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_humorous', default=50,
+    parser.add_argument('--epochs_humorous', default=20,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_romantic', default=50,
+    parser.add_argument('--epochs_romantic', default=20,
                         help="number of training epochs", type=int)
     parser.add_argument('--batch_size', default=128,
                         help="Batch size", type=int)

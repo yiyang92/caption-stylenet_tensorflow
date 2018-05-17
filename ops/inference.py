@@ -16,11 +16,9 @@ def inference(params, decoder, data, saver, sess):
                                                             get_names=True,
                                                             label=label):
         if params['sample_gen'] == 'beam_search':
-            pass
-            # sent = decoder.beam_search(sess, names, image_f,
-            #                            image_ph, labels,
-            #                            ground_truth=captions[1],
-            #                            beam_size=params.beam_size)
+            sent = decoder.beam_search(sess, names, image_f,
+                                       label, ground_truth=captions[1],
+                                       beam_size=params['beam_size'])
         else:
             sent, _ = decoder.online_inference(sess, names, image_f,
                                                label, ground_truth=captions[1])

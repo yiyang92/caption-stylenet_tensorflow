@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from model.lstm_cell import FactoredLSTMCell, rnn_placeholders
+from utils.top_n import TopN, Beam
 
 
 class Decoder():
@@ -50,6 +51,10 @@ class Decoder():
             self._v = tf.get_variable('v', [f_dim, 4 * h_depth])
             # Wh matrix
             self._wh = tf.get_variable('wh', [h_depth, 4 * h_depth])
+            # bias
+            bias = tf.get_variable('rnn_bias', shape=[4 * self._num_units],
+                                   initializer=tf.zeros_initializer(
+                                       dtype=tf.float32))
         if mode == 'train_capt':
             # actual (caption model) S matrix
             self._sc = tf.get_variable('s_c', [f_dim, 4 * f_dim])
@@ -76,7 +81,7 @@ class Decoder():
         wh = self._wh
         rnn_scope = self._scope_helper('rnn_scope', mode)
         with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
-            self._lstm = FactoredLSTMCell(self._num_units, s, u, v, wh)
+            self._lstm = FactoredLSTMCell(self._num_units, s, u, v, wh, bias)
             init_state = self._lstm.zero_state(
                 batch_size=tf.shape(image_embs)[0], dtype=tf.float32)
         # embeddings
@@ -146,9 +151,6 @@ class Decoder():
         # get stop word index from dictionary
         stop_word_idx = self._data_dict.word2idx['<EOS>']
         cap_list = [None] * in_pictures.shape[0]
-        # set placeholders
-        # captions = tf.placeholder(tf.int32, [1, None])
-        # lengths = tf.placeholder(tf.int32, [None], name='seq_length')
         # initialize caption generator
         with tf.variable_scope("rnn", reuse=tf.AUTO_REUSE):
             _, states = self.forward(mode='gen', lm_label=label)
@@ -207,8 +209,8 @@ class Decoder():
             print("Ground truth caption: ", cap_list[i]['ground_truth'])
         return cap_list, cap_raw
 
-    def beam_search(self, sess, picture_ids, in_pictures, image_ph,
-                    labels, ground_truth=None, beam_size=2,
+    def beam_search(self, sess, picture_ids, in_pictures, label,
+                    stop_word='<EOS>', ground_truth=None, beam_size=2,
                     ret_beams=False, len_norm_f=0.7):
         """Generate captions using beam search algorithm
         Args:
@@ -228,20 +230,11 @@ class Decoder():
         start_word_idx = self._data_dict.word2idx['<BOS>']
         stop_word_idx = self._data_dict.word2idx['<EOS>']
         cap_list = [None] * in_pictures.shape[0]
-        # set placeholders
-        captions = tf.placeholder(tf.int32, [1, None])
-        lengths = tf.placeholder(tf.int32, [None], name='seq_length')
-        labels_ph = tf.placeholder(tf.int32, [None], name='labels')
-        y_one_hot = tf.one_hot(labels_ph, self.n_classes, dtype=tf.int32)
-        labels_tiled = tf.tile(tf.expand_dims(y_one_hot, 0),
-                               [self.params.gen_z_samples, 1, 1])
         # initialize caption generator
-        with tf.variable_scope("decoder", reuse=tf.AUTO_REUSE):
-            _, _, states = self.px_z_y({'y': labels_tiled},
-                                       captions, lengths, True)
+        with tf.variable_scope("rnn", reuse=tf.AUTO_REUSE):
+            _, states = self.forward(mode='gen', lm_label=label)
         init_state, out_state, sample = states
         # get label names, if will be more labels can be loaded from pickle
-        labels_names = ['humorous', 'romantic', 'actual']
         for im in range(len(in_pictures)):
             state = None
             if ground_truth is not None:
@@ -253,15 +246,15 @@ class Decoder():
 
             cap_list[im] = {'image_id': int(picture_ids[im].split('.')[0]),
                            'caption': ' ',
-                           'label': labels_names[int(labels[im])]}
+                           'label': label}
             if ground_truth is not None:
                 cap_list[im].update({'ground_truth': g_truth})
             # initial feed
             seed = start_word_idx
-            feed = {captions: np.array(seed).reshape([1, 1]),
-                    lengths: [1],
-                    image_ph: np.expand_dims(in_pictures[im], 0),
-                    labels_ph: [labels[im]]}
+            feed = {self._capt_inputs: np.array(seed).reshape([1, 1]),
+                    self._seq_length: [1],
+                    self._image_embs: np.expand_dims(in_pictures[im], 0)
+                    }
             # probs are normalized probs
             probs, state = sess.run([sample, out_state], feed)
             # initial Beam, pushed to the heap (TopN class)
@@ -275,6 +268,7 @@ class Decoder():
             complete_captions = TopN(beam_size)
 
             # continue to generate, until max_len
+            gen_max = self._params['gen_max']
             for _ in range(gen_max - 1):
                 partial_captions_list = partial_captions.extract()
                 partial_captions.reset()
@@ -286,9 +280,10 @@ class Decoder():
                 probs_list, states_list = [], []
                 for inp_length, state in zip(input_feed, state_feed):
                     inp, length = inp_length
-                    feed = {self.captions: np.array(inp).reshape([1, 1]),
-                            self.lengths: [length],
-                            image_ph: np.expand_dims(in_pictures[im], 0),
+                    feed = {self._capt_inputs: np.array(inp).reshape([1, 1]),
+                            self._seq_length: [length],
+                            self._image_embs: np.expand_dims(
+                                in_pictures[im], 0),
                             init_state: state}
                     probs, new_state = sess.run([sample, out_state], feed)
                     probs_list.append(probs)

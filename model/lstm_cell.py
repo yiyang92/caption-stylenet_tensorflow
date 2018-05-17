@@ -15,6 +15,7 @@ class FactoredLSTMCell():
                  u,
                  v,
                  wh=None,
+                 bias=None,
                  activation=None,
                  forget_bias=1.0,
                  reuse=None,
@@ -30,6 +31,7 @@ class FactoredLSTMCell():
         self._u = u  # if not None, variable shape [embed_size, fact_e]
         self._v = v  # if not None, variable shape [fact_e, 4 * n_units]
         self._wh = wh
+        self._bias = bias
         # other parameters
         self.built = False
 
@@ -55,9 +57,9 @@ class FactoredLSTMCell():
         if inputs_shape[1] is None:
           raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s"
                            % inputs_shape)
-        self._bias = tf.get_variable(
-            'bias', shape=[4 * self._num_units],
-            initializer=tf.zeros_initializer(dtype=tf.float32))
+        # self._bias = tf.get_variable(
+        #     'bias', shape=[4 * self._num_units],
+        #     initializer=tf.zeros_initializer(dtype=tf.float32))
         one = tf.constant(1, dtype=tf.int32)
 
         self.ui, self.uf, self.uo, self.uc = tf.split(
