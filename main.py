@@ -16,7 +16,6 @@ PICKLES_DIR = './pickles'
 
 def main():
     # data
-    print(params.keys())
     data = Data(IMAGE_DIR, PICKLES_DIR, params['keep_words'], params=params)
     data_dict = data.dictionary
     # define placeholders
@@ -59,11 +58,16 @@ def main():
     saver = tf.train.Saver(tf.trainable_variables(),
                            max_to_keep=params['keep_cp'])
     config = tf.ConfigProto()
+    # print(tf.trainable_variables())
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         # print(tf.trainable_variables())
         # train 3 networks, save S_act, S_hum, S_rom
+        if params['restore']:
+            print("Restoring from checkpoint")
+            saver.restore(sess,
+                          "./checkpoints/{}.ckpt".format(params['checkpoint']))
         if params['mode'] == 'training':
             for label in ('actual', 'humorous', 'romantic'):
                 for e in range(params['epochs_{}'.format(label)]):

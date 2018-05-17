@@ -15,13 +15,31 @@ def masked_loss(labels_flat, logits, mode):
     return batch_loss
 
 
-def lstm_optimizer(loss, params, learning_rate, mode='capt',
+def lstm_optimizer(loss, params, learning_rate, mode,
                    num_ex_per_epoch=None):
-    gradients = tf.gradients(loss, tf.trainable_variables())
-    # clipped_grad = clip_by_value(gradients, -0.1, 0.1)
+    trainable_variables = []
+    # a bit overkill, but let it be
+    for v in tf.trainable_variables():
+        name_tokens = v.op.name.split('/')
+        if mode == 'train_lmh' or mode =='train_lmr':
+            if name_tokens[1] == 'u_and_v':
+                continue
+            elif name_tokens[1] == 's_c':
+                continue
+            elif name_tokens[1] == 's_r' and mode == 'train_lmh':
+                continue
+            elif name_tokens[1] == 's_h' and mode == 'train_lmr':
+                continue
+        if mode == 'train_capt':
+            if name_tokens[1] == 's_r' or name_tokens[1] == 's_h':
+                continue
+        trainable_variables.append(v)
     clip_norm = params['lstm_clip_norm']
+    # for v in trainable_variables:
+    #     print(v.op.name.split('/'))
+    gradients = tf.gradients(loss, trainable_variables)
     clipped_grad, global_norm = tf.clip_by_global_norm(gradients, clip_norm)
-    grads_vars = zip(clipped_grad, tf.trainable_variables())
+    grads_vars = zip(clipped_grad, trainable_variables)
     # learning rate decay
     learning_rate = tf.constant(learning_rate)
     global_step = tf.Variable(initial_value=0, name="global_step",

@@ -27,11 +27,11 @@ def parse_args():
     def_img_dir = "/home/luoyy16/datasets-large/flickr30k-images/"
     parser.add_argument('--image_dir', default=def_img_dir,
                         help="flickr30k directory")
-    parser.add_argument('--epochs_actual', default=80,
+    parser.add_argument('--epochs_actual', default=30,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_humorous', default=1,
+    parser.add_argument('--epochs_humorous', default=50,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_romantic', default=1,
+    parser.add_argument('--epochs_romantic', default=50,
                         help="number of training epochs", type=int)
     parser.add_argument('--batch_size', default=128,
                         help="Batch size", type=int)

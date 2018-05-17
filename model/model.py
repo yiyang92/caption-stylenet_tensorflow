@@ -42,24 +42,15 @@ class Decoder():
             image_embs = self._image_embs
         emb_size = self._embed_size
         f_dim = self._factored_dim
-        if mode == 'train_capt':
-            trainable_uv = True
-        else:
-            trainable_uv = False
         with tf.variable_scope('u_and_v', reuse=tf.AUTO_REUSE):
             h_depth = self._num_units
             # U matrix
-            self._u = tf.get_variable('u', [emb_size, 4 * f_dim],
-                                      trainable=trainable_uv)
+            self._u = tf.get_variable('u', [emb_size, 4 * f_dim])
             # V matrix
-            self._v = tf.get_variable('v', [f_dim, 4 * h_depth],
-                                      trainable=trainable_uv)
+            self._v = tf.get_variable('v', [f_dim, 4 * h_depth])
             # Wh matrix
-            self._wh = tf.get_variable('wh', [h_depth, 4 * h_depth],
-                                       trainable=trainable_uv)
+            self._wh = tf.get_variable('wh', [h_depth, 4 * h_depth])
         if mode == 'train_capt':
-            #with tf.variable_scope('decoder', reuse)
-            # train caption Model, initalize factored matrices
             # actual (caption model) S matrix
             self._sc = tf.get_variable('s_c', [f_dim, 4 * f_dim])
             s = self._sc
@@ -100,10 +91,13 @@ class Decoder():
         vect_inputs = tf.nn.embedding_lookup(embedding, self._capt_inputs)
         # if not language model, input image embeddings
         if mode == 'train_capt' or mode == 'gen':
-            images_fv = tf.layers.dense(image_embs, self._embed_size,
-                                        name='imf_emb')
-            with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
-                _, first_state = self._lstm(images_fv, init_state)
+            # images_fv = tf.layers.dense(image_embs, self._embed_size,
+            #                             name='imf_emb')
+            # with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
+            #     _, first_state = self._lstm(images_fv, init_state)
+            c = h = tf.layers.dense(image_embs, self._num_units,
+                                    name='imf_lstm_state')
+            first_state = tf.nn.rnn_cell.LSTMStateTuple(c, h)
         elif mode == 'train_lmh' or mode == 'train_lmr':
             first_state = init_state
         initial_state = rnn_placeholders(first_state)
@@ -156,7 +150,6 @@ class Decoder():
         # captions = tf.placeholder(tf.int32, [1, None])
         # lengths = tf.placeholder(tf.int32, [None], name='seq_length')
         # initialize caption generator
-        print(tf.trainable_variables())
         with tf.variable_scope("rnn", reuse=tf.AUTO_REUSE):
             _, states = self.forward(mode='gen', lm_label=label)
         init_state, out_state, sample = states

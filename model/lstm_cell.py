@@ -1,11 +1,10 @@
 # main lstm network
 import tensorflow as tf
 from tensorflow.python.ops.rnn_cell_impl import LSTMStateTuple
-from tensorflow.python.ops.rnn_cell_impl import LayerRNNCell
 from tensorflow.python.layers import base as base_layer
 
 
-class FactoredLSTMCell(LayerRNNCell):
+class FactoredLSTMCell():
     """Factored LSTM recurrent network cell.
   The implementation is based on: http://ieeexplore.ieee.org/document/8099591/.
     """
@@ -21,8 +20,8 @@ class FactoredLSTMCell(LayerRNNCell):
                  reuse=None,
                  name=None,
                  dtype=None):
-        super(FactoredLSTMCell, self).__init__(_reuse=reuse, name=name,
-                                               dtype=dtype)
+        # super(FactoredLSTMCell, self).__init__(_reuse=reuse, name=name,
+        #                                        dtype=dtype)
         self._input_seq = base_layer.InputSpec(ndim=2)
         self._num_units = num_units
         self._activation = activation or tf.tanh
@@ -31,6 +30,18 @@ class FactoredLSTMCell(LayerRNNCell):
         self._u = u  # if not None, variable shape [embed_size, fact_e]
         self._v = v  # if not None, variable shape [fact_e, 4 * n_units]
         self._wh = wh
+        # other parameters
+        self.built = False
+
+    def __call__(self, inputs, state):
+        if not self.built:
+            self.build(tf.shape(inputs))
+        return self.call(inputs, state)
+
+    def zero_state(self, batch_size, dtype):
+        c = tf.zeros([batch_size, self._num_units], dtype)
+        h = tf.zeros([batch_size, self._num_units], dtype)
+        return LSTMStateTuple(c, h)
 
     @property
     def state_size(self):
@@ -41,12 +52,12 @@ class FactoredLSTMCell(LayerRNNCell):
         return self._num_units
 
     def build(self, inputs_shape):
-        if inputs_shape[1].value is None:
+        if inputs_shape[1] is None:
           raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s"
                            % inputs_shape)
         self._bias = tf.get_variable(
             'bias', shape=[4 * self._num_units],
-            initializer=tf.zeros_initializer(dtype=self.dtype))
+            initializer=tf.zeros_initializer(dtype=tf.float32))
         one = tf.constant(1, dtype=tf.int32)
 
         self.ui, self.uf, self.uo, self.uc = tf.split(
@@ -79,9 +90,11 @@ class FactoredLSTMCell(LayerRNNCell):
         matmul = tf.matmul
         # previous state
         c, h = state
-        # bayes
+        # bias
         bi, bf, bo, bc = tf.split(
             value=self._bias, num_or_size_splits=4, axis=0)
+        # wi, wf, wo, wc = tf.split(
+        #     value=self._kernel, num_or_size_splits=4, axis=1)
         # input gate
         wi = matmul(self.ui, self.si)
         wi = matmul(wi, self.vi)
@@ -103,7 +116,7 @@ class FactoredLSTMCell(LayerRNNCell):
         _c = add(matmul(inputs, wc), matmul(h, self.whc))
         _c = tf.nn.bias_add(_c, bc)
         # forget bias
-        forget_bias_tensor = tf.constant(self._forget_bias, dtype=self.dtype)
+        forget_bias_tensor = tf.constant(self._forget_bias, dtype=tf.float32)
         # c
         new_c = add(multiply(c, sigmoid(add(f, forget_bias_tensor))),
                     multiply(sigmoid(i), self._activation(_c)))
