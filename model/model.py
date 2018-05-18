@@ -22,12 +22,17 @@ class Decoder():
         self._gen_temperature = gen_temperature
         self._params = params
 
-    def _scope_helper(self, scope_name, mode):
-        # TODO: make a decorator
+    def _scope_helper(self, scope_name, mode, label=None):
         if mode != 'gen':
             scope = (scope_name + '_{}').format(mode)
         else:
-            scope = (scope_name + '_{}').format('train_capt')
+            if label is not None:
+                labels = {'actual': 'train_capt',
+                          'humorous': 'train_lmh',
+                          'romantic': 'train_lmr'}
+                scope = (scope_name + '_{}').format(labels[label])
+            else:
+                scope = (scope_name + '_{}').format('train_capt')
         return scope
 
     def forward(self, mode='train_capt', lm_label=None,
@@ -101,13 +106,13 @@ class Decoder():
             # with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
             #     _, first_state = self._lstm(images_fv, init_state)
             c = h = tf.layers.dense(image_embs, self._num_units,
-                                    name='imf_lstm_state')
+                                    name='imf_emb')
             first_state = tf.nn.rnn_cell.LSTMStateTuple(c, h)
         elif mode == 'train_lmh' or mode == 'train_lmr':
             first_state = init_state
         initial_state = rnn_placeholders(first_state)
-        with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
-            length = self._seq_length
+        with tf.variable_scope('rnn_scope', reuse=tf.AUTO_REUSE):
+            length = self._seq_length  # some bug, need to check lengths later
             outputs, last_state = tf.nn.dynamic_rnn(self._lstm,
                                                     inputs=vect_inputs,
                                                     sequence_length=None,
@@ -119,7 +124,7 @@ class Decoder():
             outputs = outputs[:, -1, :]
         outputs_r = tf.reshape(outputs, [-1, self._lstm.output_size])
         # set logits scope
-        rnn_logits_scope = self._scope_helper('logits', mode)
+        rnn_logits_scope = self._scope_helper('logits', 'train_capt')
         with tf.variable_scope(rnn_logits_scope, reuse=tf.AUTO_REUSE):
             x_logits = tf.layers.dense(outputs_r,
                                        units=self._data_dict.vocab_size,

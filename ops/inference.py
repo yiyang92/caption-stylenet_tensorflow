@@ -14,7 +14,8 @@ def inference(params, decoder, data, saver, sess):
     for captions, lengths, image_f, names in data.get_batch(100,
                                                             set=params['gen_set'],
                                                             get_names=True,
-                                                            label=label):
+                                                            label=label,
+                                                            mode='gen'):
         if params['sample_gen'] == 'beam_search':
             sent = decoder.beam_search(sess, names, image_f,
                                        label, ground_truth=captions[1],

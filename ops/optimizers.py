@@ -19,9 +19,10 @@ def lstm_optimizer(loss, params, learning_rate, mode,
                    num_ex_per_epoch=None):
     trainable_variables = []
     # a bit overkill, but let it be
+    print(mode)
     for v in tf.trainable_variables():
         name_tokens = v.op.name.split('/')
-        if mode == 'train_lmh' or mode =='train_lmr':
+        if mode == 'train_lmh' or mode == 'train_lmr':
             if name_tokens[1] == 'u_and_v':
                 continue
             elif name_tokens[1] == 's_c':
@@ -30,13 +31,19 @@ def lstm_optimizer(loss, params, learning_rate, mode,
                 continue
             elif name_tokens[1] == 's_h' and mode == 'train_lmr':
                 continue
+            elif name_tokens[1] == 'emb':
+                continue
+            elif name_tokens[1] == 'imf_emb':
+                continue
+            elif name_tokens[1] == 'logits_train_capt':
+                continue
         if mode == 'train_capt':
             if name_tokens[1] == 's_r' or name_tokens[1] == 's_h':
                 continue
         trainable_variables.append(v)
     clip_norm = params['lstm_clip_norm']
-    # for v in trainable_variables:
-    #     print(v.op.name.split('/'))
+    for v in trainable_variables:
+        print(v.op.name.split('/'))
     gradients = tf.gradients(loss, trainable_variables)
     clipped_grad, global_norm = tf.clip_by_global_norm(gradients, clip_norm)
     grads_vars = zip(clipped_grad, trainable_variables)
@@ -71,38 +78,3 @@ def lstm_optimizer(loss, params, learning_rate, mode,
                                                   grads_vars,
                                                   global_step=global_step)
     return optimize, global_step, global_norm
-# fine-tuning CNN
-# def cnn_optimizer(loss, params):
-#     cnn_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cnn')
-#     gradients = tf.gradients(loss, cnn_vars)
-#     grads_vars = zip(gradients, cnn_vars)
-#     # learning rate decay
-#     learning_rate = tf.constant(params.cnn_lr)
-#     global_step = tf.Variable(initial_value=0, name="global_step",
-#                               trainable=False,
-#                               collections=[tf.GraphKeys.GLOBAL_STEP,
-#                                            tf.GraphKeys.GLOBAL_VARIABLES])
-#     num_batches_per_epoch = params.num_ex_per_epoch / (
-#         params.batch_size + 0.001)
-#     decay_steps = int(num_batches_per_epoch * params.num_epochs_per_decay)
-#     learning_rate_decay = tf.train.exponential_decay(learning_rate,
-#                                                global_step,
-#                                                decay_steps=decay_steps,
-#                                                decay_rate=0.5,
-#                                                staircase=True)
-#     # lstm parameters update
-#     if params.cnn_optimizer == 'SGD':
-#         optimize = tf.train.GradientDescentOptimizer(
-#             learning_rate_decay).apply_gradients(grads_vars,
-#                                                  global_step=global_step)
-#     elif params.cnn_optimizer == 'Adam':
-#         optimize = tf.train.AdamOptimizer(
-#             params.cnn_lr, beta1=0.8).apply_gradients(grads_vars,
-#                                                   global_step=global_step)
-#     elif params.cnn_optimizer == 'Momentum':
-#         momentum = 0.90
-#         optimize = tf.train.MomentumOptimizer(learning_rate_decay,
-#                                               momentum).apply_gradients(
-#                                                   grads_vars,
-#                                                   global_step=global_step)
-#     return optimize, global_step

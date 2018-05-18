@@ -27,6 +27,5 @@ framework
 - don't forget to download data and set the path int the parameters -(https://zhegan27.github.io/Papers/FlickrStyle_v0.9.zip)- flickr_style7k
 
 ## TODO
-- finish beam_search
 - change VGG16 to ResNet
 - try to get better results (results are not good)

@@ -13,7 +13,7 @@ def parse_args():
     parser.add_argument('--embed_dim', default=300,
                         help='embedding size', type=int)
     parser.add_argument('--keep_words', default=1,
-                        help='minimum word occurence')
+                        help='minimum word occurence', type=int)
     parser.add_argument('--lstm_hidden', default=512,
                         help='lstm hidden state size', type=int)
     parser.add_argument('--num_captions', default=5,
@@ -29,9 +29,9 @@ def parse_args():
                         help="flickr30k directory")
     parser.add_argument('--epochs_actual', default=30,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_humorous', default=20,
+    parser.add_argument('--epochs_humorous', default=35,
                         help="number of training epochs", type=int)
-    parser.add_argument('--epochs_romantic', default=20,
+    parser.add_argument('--epochs_romantic', default=35,
                         help="number of training epochs", type=int)
     parser.add_argument('--batch_size', default=128,
                         help="Batch size", type=int)
@@ -61,7 +61,7 @@ def parse_args():
     parser.add_argument('--gen_set', default='val',
                         choices=['val', 'test'],
                         help="test time caption generation set")
-    parser.add_argument('--keep_cp', default=5,
+    parser.add_argument('--keep_cp', default=1,
                         help="max checkpoints to keep", type=int)
     parser.add_argument('--gen_max', default=50,
                         help="max caption length", type=int)

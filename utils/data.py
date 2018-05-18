@@ -33,8 +33,16 @@ class Data():
             return pickle.load(rf)
 
     def get_batch(self, batch_size, set='train', im_features=True,
-                  get_names=False, label=None):
-        """Get batch."""
+                  get_names=False, label=None, mode=None):
+        """Batch generator
+        Arguments:
+            batch_size: batch size
+            set: dataset for this generator (train, val, test)
+            im_features: whether return image embedding vector (or image)
+            get_name: get image_ids, used for generation json
+            label: caption label
+            mode: optional, for not returning multiple captions as gt (gen)
+        """
         # if select inly one caption
         imn_batch = [None] * batch_size
         if set == 'train':
@@ -45,7 +53,7 @@ class Data():
             self._iterable = self.test_captions.copy()
         im_names = list(self._iterable.keys())
         shuffle(im_names)
-        mult_captions = True if label == 'actual' else False
+        mult_captions = True if label == 'actual' and mode != 'gen' else False
         for i, item in enumerate(im_names):
             inx = i % batch_size
             imn_batch[inx] = item

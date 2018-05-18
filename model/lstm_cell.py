@@ -95,27 +95,33 @@ class FactoredLSTMCell():
         # bias
         bi, bf, bo, bc = tf.split(
             value=self._bias, num_or_size_splits=4, axis=0)
-        # wi, wf, wo, wc = tf.split(
-        #     value=self._kernel, num_or_size_splits=4, axis=1)
         # input gate
-        wi = matmul(self.ui, self.si)
+        ui = matmul(inputs, self.ui)
+        wi = matmul(ui, self.si)
         wi = matmul(wi, self.vi)
-        i = add(matmul(inputs, wi), matmul(h, self.whi))
+        #i = add(matmul(inputs, wi), matmul(h, self.whi))
+        i = add(wi, matmul(h, self.whi))
         i = tf.nn.bias_add(i, bi)
         # forget gate
-        wf = matmul(self.uf, self.sf)
+        uf = matmul(inputs, self.uf)
+        wf = matmul(uf, self.sf)
         wf = matmul(wf, self.vf)
-        f = add(matmul(inputs, wf), matmul(h, self.whf))
+        # f = add(matmul(inputs, wf), matmul(h, self.whf))
+        f = add(wf, matmul(h, self.whf))
         f = tf.nn.bias_add(f, bf)
         # output gate
-        wo = matmul(self.uo, self.so)
+        uo = matmul(inputs, self.uo)
+        wo = matmul(uo, self.so)
         wo = matmul(wo, self.vo)
-        o = add(matmul(inputs, wo), matmul(h, self.who))
+        # o = add(matmul(inputs, wo), matmul(h, self.who))
+        o = add(wo, matmul(h, self.who))
         o = tf.nn.bias_add(o, bo)
         # ~c
-        wc = matmul(self.uc, self.sc)
+        uc = matmul(inputs, self.uc)
+        wc = matmul(uc, self.sc)
         wc = matmul(wc, self.vc)
-        _c = add(matmul(inputs, wc), matmul(h, self.whc))
+        # _c = add(matmul(inputs, wc), matmul(h, self.whc))
+        _c = add(wc, matmul(h, self.whc))
         _c = tf.nn.bias_add(_c, bc)
         # forget bias
         forget_bias_tensor = tf.constant(self._forget_bias, dtype=tf.float32)

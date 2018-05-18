@@ -36,12 +36,13 @@ def main():
     model = Decoder(capt_inputs, params['lstm_hidden'],
                     params['embed_dim'], seq_length,
                     data_dict, params['lstm_hidden'], image_embs,
-                    params=params, reuse_text_emb=False)
+                    params=params, reuse_text_emb=True)
     with tf.variable_scope("rnn", reuse=tf.AUTO_REUSE):
         x_cmlogits, _ = model.forward(mode='train_capt',
                                       image_embs=features_tiled)
-        x_lmhlogits, _ = model.forward(mode='train_lmh', lm_label='humorous')
         x_lmrlogits, _ = model.forward(mode='train_lmr', lm_label='romantic')
+        x_lmhlogits, _ = model.forward(mode='train_lmh', lm_label='humorous')
+        
     # losses
     labels_flat = tf.reshape(capt_labels, [-1])
     cm_loss = masked_loss(labels_flat, x_cmlogits, mode='train_capt')
