@@ -1,4 +1,3 @@
-# caption-stylenet_tensorflow
 # StyleNet: Generating Attractive Visual Captions with Styles
 
 StyleNet is a novel framework to address the task of generating attractive captions for images and videos with different styles. Authors proposed a model, which is based on using
