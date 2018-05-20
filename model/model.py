@@ -101,13 +101,10 @@ class Decoder():
         vect_inputs = tf.nn.embedding_lookup(embedding, self._capt_inputs)
         # if not language model, input image embeddings
         if mode == 'train_capt' or mode == 'gen':
-            # images_fv = tf.layers.dense(image_embs, self._embed_size,
-            #                             name='imf_emb')
-            # with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
-            #     _, first_state = self._lstm(images_fv, init_state)
-            c = h = tf.layers.dense(image_embs, self._num_units,
-                                    name='imf_emb')
-            first_state = tf.nn.rnn_cell.LSTMStateTuple(c, h)
+            images_fv = tf.layers.dense(image_embs, self._embed_size,
+                                        name='imf_emb')
+            with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
+                _, first_state = self._lstm(images_fv, init_state)
         elif mode == 'train_lmh' or mode == 'train_lmr':
             first_state = init_state
         initial_state = rnn_placeholders(first_state)
@@ -124,7 +121,7 @@ class Decoder():
             outputs = outputs[:, -1, :]
         outputs_r = tf.reshape(outputs, [-1, self._lstm.output_size])
         # set logits scope
-        rnn_logits_scope = self._scope_helper('logits', 'train_capt')
+        rnn_logits_scope = self._scope_helper('logits', mode, lm_label)
         with tf.variable_scope(rnn_logits_scope, reuse=tf.AUTO_REUSE):
             x_logits = tf.layers.dense(outputs_r,
                                        units=self._data_dict.vocab_size,

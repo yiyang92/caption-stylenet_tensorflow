@@ -42,7 +42,7 @@ def main():
                                       image_embs=features_tiled)
         x_lmrlogits, _ = model.forward(mode='train_lmr', lm_label='romantic')
         x_lmhlogits, _ = model.forward(mode='train_lmh', lm_label='humorous')
-        
+
     # losses
     labels_flat = tf.reshape(capt_labels, [-1])
     cm_loss = masked_loss(labels_flat, x_cmlogits, mode='train_capt')
@@ -63,6 +63,9 @@ def main():
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
+        if params['write_summary']:
+            summary_writer = tf.summary.FileWriter('./logs', sess.graph)
+            summary_writer.add_graph(sess.graph)
         # print(tf.trainable_variables())
         # train 3 networks, save S_act, S_hum, S_rom
         if params['restore']:

@@ -21,13 +21,13 @@ def parse_args():
                         type=int)
     parser.add_argument('--restore', help='whether restore',
                         action="store_true")
-    parser.add_argument('--lstm_clip_norm', default=0.5,
+    parser.add_argument('--lstm_clip_norm', default=5.0,
                         help='whether to clip lstm gradients', type=float)
     parser.add_argument('--gpu', default='0', help="specify GPU number")
     def_img_dir = "/home/luoyy16/datasets-large/flickr30k-images/"
     parser.add_argument('--image_dir', default=def_img_dir,
                         help="flickr30k directory")
-    parser.add_argument('--epochs_actual', default=30,
+    parser.add_argument('--epochs_actual', default=50,
                         help="number of training epochs", type=int)
     parser.add_argument('--epochs_humorous', default=35,
                         help="number of training epochs", type=int)
@@ -45,7 +45,10 @@ def parse_args():
                         help="greedy, sample, beam_search")
     parser.add_argument('--checkpoint', default='00',
                         help="specify checkpoint name, default=last_run")
-    parser.add_argument('--fine_tune', help="whether to fine_tune CNN",
+    # parser.add_argument('--fine_tune', help="whether to fine_tune CNN",
+    #                     action="store_true")
+    parser.add_argument('--write_summary',
+                        help="whether to write summary for tensorboard",
                         action="store_true")
     parser.add_argument('--mode', default='training',
                         choices=['training', 'inference'],

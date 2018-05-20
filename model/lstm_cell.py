@@ -21,8 +21,6 @@ class FactoredLSTMCell():
                  reuse=None,
                  name=None,
                  dtype=None):
-        # super(FactoredLSTMCell, self).__init__(_reuse=reuse, name=name,
-        #                                        dtype=dtype)
         self._input_seq = base_layer.InputSpec(ndim=2)
         self._num_units = num_units
         self._activation = activation or tf.tanh
@@ -55,13 +53,11 @@ class FactoredLSTMCell():
 
     def build(self, inputs_shape):
         if inputs_shape[1] is None:
-          raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s"
-                           % inputs_shape)
-        # self._bias = tf.get_variable(
-        #     'bias', shape=[4 * self._num_units],
-        #     initializer=tf.zeros_initializer(dtype=tf.float32))
-        one = tf.constant(1, dtype=tf.int32)
+            raise ValueError("Expected inputs.shape[-1] to be"
+                             " known, saw shape: %s"
+                             % inputs_shape)
 
+        one = tf.constant(1, dtype=tf.int32)
         self.ui, self.uf, self.uo, self.uc = tf.split(
             value=self._u, num_or_size_splits=4, axis=one)
 
@@ -96,44 +92,32 @@ class FactoredLSTMCell():
         bi, bf, bo, bc = tf.split(
             value=self._bias, num_or_size_splits=4, axis=0)
         # input gate
-        ui = matmul(inputs, self.ui)
-        wi = matmul(ui, self.si)
+        wi = matmul(self.ui, self.si)
         wi = matmul(wi, self.vi)
-        #i = add(matmul(inputs, wi), matmul(h, self.whi))
-        i = add(wi, matmul(h, self.whi))
+        i = add(matmul(inputs, wi), matmul(h, self.whi))
         i = tf.nn.bias_add(i, bi)
         # forget gate
-        uf = matmul(inputs, self.uf)
-        wf = matmul(uf, self.sf)
+        wf = matmul(self.uf, self.sf)
         wf = matmul(wf, self.vf)
-        # f = add(matmul(inputs, wf), matmul(h, self.whf))
-        f = add(wf, matmul(h, self.whf))
+        f = add(matmul(inputs, wf), matmul(h, self.whf))
         f = tf.nn.bias_add(f, bf)
         # output gate
-        uo = matmul(inputs, self.uo)
-        wo = matmul(uo, self.so)
+        wo = matmul(self.uo, self.so)
         wo = matmul(wo, self.vo)
-        # o = add(matmul(inputs, wo), matmul(h, self.who))
-        o = add(wo, matmul(h, self.who))
+        o = add(matmul(inputs, wo), matmul(h, self.who))
         o = tf.nn.bias_add(o, bo)
         # ~c
-        uc = matmul(inputs, self.uc)
-        wc = matmul(uc, self.sc)
+        wc = matmul(self.uc, self.sc)
         wc = matmul(wc, self.vc)
-        # _c = add(matmul(inputs, wc), matmul(h, self.whc))
-        _c = add(wc, matmul(h, self.whc))
+        _c = add(matmul(inputs, wc), matmul(h, self.whc))
         _c = tf.nn.bias_add(_c, bc)
         # forget bias
         forget_bias_tensor = tf.constant(self._forget_bias, dtype=tf.float32)
         # c
         new_c = add(multiply(c, sigmoid(add(f, forget_bias_tensor))),
                     multiply(sigmoid(i), self._activation(_c)))
+        # h
         new_h = multiply(self._activation(new_c), sigmoid(o))
-        # i = input_gate, j = new_input(c~), f = forget_gate, o = output_gate
-        # i, j, f, o = tf.split(
-        #     value=gate_inputs, num_or_size_splits=4, axis=one)
-        # Note that using `add` and `multiply` instead of `+` and `*` gives a
-        # performance improvement. So using those at the cost of readability.
         new_state = LSTMStateTuple(new_c, new_h)
         return new_h, new_state
 

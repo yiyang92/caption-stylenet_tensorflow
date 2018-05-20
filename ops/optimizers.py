@@ -37,8 +37,16 @@ def lstm_optimizer(loss, params, learning_rate, mode,
                 continue
             elif name_tokens[1] == 'logits_train_capt':
                 continue
+            elif name_tokens[1] == 'logits_train_lmh' and mode == 'train_lmr':
+                continue
+            elif name_tokens[1] == 'logits_train_lmr' and mode == 'train_lmh':
+                continue
         if mode == 'train_capt':
             if name_tokens[1] == 's_r' or name_tokens[1] == 's_h':
+                continue
+            if name_tokens[1] == 'logits_train_lmr' and mode == 'train_capt':
+                continue
+            if name_tokens[1] == 'logits_train_lmh' and mode == 'train_capt':
                 continue
         trainable_variables.append(v)
     clip_norm = params['lstm_clip_norm']
