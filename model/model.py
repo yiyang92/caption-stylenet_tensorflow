@@ -121,7 +121,7 @@ class Decoder():
             outputs = outputs[:, -1, :]
         outputs_r = tf.reshape(outputs, [-1, self._lstm.output_size])
         # set logits scope
-        rnn_logits_scope = self._scope_helper('logits', mode, lm_label)
+        rnn_logits_scope = self._scope_helper('logits', 'train_capt')
         with tf.variable_scope(rnn_logits_scope, reuse=tf.AUTO_REUSE):
             x_logits = tf.layers.dense(outputs_r,
                                        units=self._data_dict.vocab_size,

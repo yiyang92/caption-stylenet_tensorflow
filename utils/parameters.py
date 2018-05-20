@@ -27,11 +27,7 @@ def parse_args():
     def_img_dir = "/home/luoyy16/datasets-large/flickr30k-images/"
     parser.add_argument('--image_dir', default=def_img_dir,
                         help="flickr30k directory")
-    parser.add_argument('--epochs_actual', default=50,
-                        help="number of training epochs", type=int)
-    parser.add_argument('--epochs_humorous', default=35,
-                        help="number of training epochs", type=int)
-    parser.add_argument('--epochs_romantic', default=35,
+    parser.add_argument('--epochs', default=30,
                         help="number of training epochs", type=int)
     parser.add_argument('--batch_size', default=128,
                         help="Batch size", type=int)
@@ -45,8 +41,6 @@ def parse_args():
                         help="greedy, sample, beam_search")
     parser.add_argument('--checkpoint', default='00',
                         help="specify checkpoint name, default=last_run")
-    # parser.add_argument('--fine_tune', help="whether to fine_tune CNN",
-    #                     action="store_true")
     parser.add_argument('--write_summary',
                         help="whether to write summary for tensorboard",
                         action="store_true")

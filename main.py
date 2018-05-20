@@ -73,8 +73,8 @@ def main():
             saver.restore(sess,
                           "./checkpoints/{}.ckpt".format(params['checkpoint']))
         if params['mode'] == 'training':
-            for label in ('actual', 'humorous', 'romantic'):
-                for e in range(params['epochs_{}'.format(label)]):
+            for e in range(params['epochs']):
+                for label in ('actual', 'humorous', 'romantic'):
                     for captions, lengths, image_f in data.get_batch(
                         params['batch_size'], label=label, set='train'):
                         feed = {capt_inputs: captions[0],
@@ -106,6 +106,14 @@ def main():
                             losses.append(vloss_)
                         print("{} Validation Model: Epoch: {} Loss: {}".format(
                             label, e, np.mean(losses)))
+                        # save model
+                        if not os.path.exists("./checkpoints"):
+                            os.makedirs("./checkpoints")
+                    if e % 10 == 0:  # save every 10 epochs
+                        save_path = saver.save(sess,
+                                               "./checkpoints/{}.ckpt".format(
+                                                   params['checkpoint']))
+                        print("Model saved in file: %s" % save_path)
                     print("{} Model: Epoch: {} Loss: {}".format(label,
                                                                 e, loss_))
             # save model

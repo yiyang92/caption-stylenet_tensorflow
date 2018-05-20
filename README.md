@@ -4,8 +4,6 @@
 StyleNet is a novel framework to address the task of generating attractive captions for images and videos with different styles. Authors proposed a model, which is based on using
 factorized LSTM.
 
-framework
-![Imgur](https://imgur.com/a/GC2LJB9)
 
 ## Description
 - Author: Chuang Gan, Zhe Gan, Xiaodong He, Jianfeng Gao, Li Deng
@@ -25,7 +23,21 @@ framework
 - download VGG16 weights from: https://yadi.sk/d/V6Rfzfei3TdKCH
 - place downloaded weights to ./utils folder
 - don't forget to download data and set the path int the parameters -(https://zhegan27.github.io/Papers/FlickrStyle_v0.9.zip)- flickr_style7k
+- to train launch:
+```
+ python main.py --gpu <YOUR_GPU>
+```
+- for other parameters look at source code or just:
+```
+  python main.py -h
+```
+- to generate:
+```
+  python main.py --gpu <YOUR_GPU> <Other parameters you used> --mode inference
+  --gen_label <romantic, humorous, actual> --gen_name <default 00>
+```
 
 ## TODO
 - change VGG16 to ResNet
-- try to get better results (results are not good)
+- try to get better results (results are worse than reported in paper)
+- add generation for arbitary photos
