@@ -75,8 +75,12 @@ def main():
         if params['mode'] == 'training':
             for e in range(params['epochs']):
                 for label in ('actual', 'humorous', 'romantic'):
+                    if label == 'actual':  # folowing paper
+                        batch_size = params['batch_size']
+                    else:
+                        batch_size = params['batch_size_lm']
                     for captions, lengths, image_f in data.get_batch(
-                        params['batch_size'], label=label, set='train'):
+                            batch_size, label=label, set='train'):
                         feed = {capt_inputs: captions[0],
                                 capt_labels: captions[1],
                                 image_embs: image_f,
@@ -109,7 +113,7 @@ def main():
                         # save model
                         if not os.path.exists("./checkpoints"):
                             os.makedirs("./checkpoints")
-                    if e % 10 == 0:  # save every 10 epochs
+                    if e % 10 == 0 and e != 0:  # save every 10 epochs
                         save_path = saver.save(sess,
                                                "./checkpoints/{}.ckpt".format(
                                                    params['checkpoint']))
