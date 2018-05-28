@@ -24,7 +24,7 @@ factorized LSTM.
 - don't forget to download data and set the path int the parameters -(https://zhegan27.github.io/Papers/FlickrStyle_v0.9.zip)- flickr_style7k
 - to train launch:
 ```
- python main.py --gpu <YOUR_GPU>
+ python main.py --gpu <YOUR_GPU> --tr_style <both, romantic, humorous>
 ```
 - for other parameters look at source code or just:
 ```

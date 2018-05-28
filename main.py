@@ -72,9 +72,16 @@ def main():
             print("Restoring from checkpoint")
             saver.restore(sess,
                           "./checkpoints/{}.ckpt".format(params['checkpoint']))
+        # choose labels for the training
+        tr_labels = ['actual']
+        tr_style = params['tr_style']
+        if tr_style == 'both':
+            tr_labels.extend(['humorous', 'romantic'])
+        else:
+            tr_labels.append(tr_style)
         if params['mode'] == 'training':
             for e in range(params['epochs']):
-                for label in ('actual', 'humorous', 'romantic'):
+                for label in tr_labels:
                     if label == 'actual':  # folowing paper
                         batch_size = params['batch_size']
                     else:

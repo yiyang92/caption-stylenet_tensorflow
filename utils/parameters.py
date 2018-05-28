@@ -64,6 +64,10 @@ def parse_args():
                         help="max checkpoints to keep", type=int)
     parser.add_argument('--gen_max', default=50,
                         help="max caption length", type=int)
+    parser.add_argument('--tr_style', default='romantic',
+                        choices=['both', 'humorous', 'romantic'],
+                        help="at this time train romantic, humorous or both",
+                        type=str)
 
     args = parser.parse_args()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
