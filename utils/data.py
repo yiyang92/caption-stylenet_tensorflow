@@ -18,7 +18,6 @@ class Data():
         self.pickles_dir = pickles_dir
         # labelled (+ unlabelled)
         self.train_captions = self._load_captions('captions_ltr.pkl')
-        self.val_captions = self._load_captions('captions_val.pkl')
         self.test_captions = self._load_captions('captions_test.pkl')
         print("Train data: ", len(self.train_captions.keys()))
         self.dictionary = Dictionary(self.train_captions, keep_words)
@@ -37,7 +36,7 @@ class Data():
         """Batch generator
         Arguments:
             batch_size: batch size
-            set: dataset for this generator (train, val, test)
+            set: dataset for this generator (train, test)
             im_features: whether return image embedding vector (or image)
             get_name: get image_ids, used for generation json
             label: caption label
@@ -47,8 +46,6 @@ class Data():
         imn_batch = [None] * batch_size
         if set == 'train':
             self._iterable = self.train_captions.copy()
-        elif set == 'val':
-            self._iterable = self.val_captions.copy()
         else:
             self._iterable = self.test_captions.copy()
         im_names = list(self._iterable.keys())
@@ -97,20 +94,24 @@ class Data():
             hum_c = self.dictionary.index_caption(hum_c[0])
             rom_c = self.dictionary.index_caption(rom_c[0])
             # randomly choose one of the 5 actual captions
-            if mult_captions and self._params['num_captions'] > 1:
-                ctr = i
-                for j in range(self._params['num_captions']):
-                    labelled.append(self.dictionary.index_caption(act_c[j]))
-                    lengths[ctr] = len(act_c[j]) - 1
-                    ctr += 1
-            else:
-                rand_cap = np.random.randint(low=0, high=len(act_c))
-                act_c = self.dictionary.index_caption(act_c[rand_cap])
-                # important, label-label_index correspondance
-                cap_list = [act_c, hum_c, rom_c]
-                # what will be labelled, what unlabelled
-                labelled.append(cap_list[label])
-                lengths[i] = len(labelled[i]) - 1
+            # if mult_captions and self._params['num_captions'] > 1:
+            #     ctr = i
+            #     for j in range(self._params['num_captions']):
+            #         try:
+            #             act_c[j]
+            #         except:
+            #             raise ValueError("Wtf")
+            #         labelled.append(self.dictionary.index_caption(act_c[j]))
+            #         lengths[ctr] = len(act_c[j]) - 1
+            #         ctr += 1
+            # else:
+            rand_cap = np.random.randint(low=0, high=len(act_c))
+            act_c = self.dictionary.index_caption(act_c[rand_cap])
+            # important, label-label_index correspondance
+            cap_list = [act_c, hum_c, rom_c]
+            # what will be labelled, what unlabelled
+            labelled.append(cap_list[label])
+            lengths[i] = len(labelled[i]) - 1
         pad_l = len(max(labelled, key=len))
         captions_inp = np.array([cap[:-1] + [0] * (
             pad_l - len(cap)) for cap in labelled])

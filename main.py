@@ -13,6 +13,10 @@ params = parse_args()
 IMAGE_DIR = params['image_dir']
 PICKLES_DIR = './pickles'
 
+# TODO: coco-evaluation change
+# TODO: inspect train/test split, split according to carpathy split
+# TODO: write script, which can launch coco-eval at every some period of time
+# TODO: rewrite main file, carefully check the performance
 
 def main():
     # data
