@@ -68,8 +68,18 @@ def parse_args():
                         choices=['both', 'humorous', 'romantic'],
                         help="at this time train romantic, humorous or both",
                         type=str)
+    parser.add_argument(
+        "--img_embed", 
+        default="vgg", 
+        choices=["resnet", "vgg"])
+    parser.add_argument(
+       "--weights",
+       default="./utils/resnet_v1_imagenet/model.ckpt-257706",
+       help="Weights for vgg(npz file) or Resnet checkpoint"
+    )
+
 
     args = parser.parse_args()
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     return vars(args)

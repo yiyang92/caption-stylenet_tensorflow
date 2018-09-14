@@ -7,6 +7,7 @@ import json
 import matplotlib.pyplot as plt
 from glob import glob
 import numpy as np
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -37,7 +38,7 @@ parser.add_argument(
     "--split",
     help="Factual captions split, random or karpathy",
     choices=["karp", "rand"],
-    default="karp"
+    default="rand"
 )
 parser.add_argument(
     "--karp_path",
@@ -85,7 +86,7 @@ print(
 def get_act_caps(cap_path):
     cap_files = list(glob(cap_path + '*.txt'))
     cap_dict = {}
-    for file in cap_files:
+    for file in tqdm(cap_files):
         caps = []
         with open(file, 'r') as rf:
             lines = rf.readlines()
@@ -106,6 +107,7 @@ def get_act_caps(cap_path):
 
 def get_karp_spit():
     """Karpathy split, returns dict f_name: [captions]"""
+    print("WARNING: Karpathy split not working peopwrly now, use random split")
     with open(args.karp_path, "r") as rf:
         carp_split = json.load(rf)
     if not carp_split["dataset"] == "flickr30k":
@@ -118,11 +120,13 @@ def get_karp_spit():
         capt_dict_set[c_d["filename"]] = c_d["split"]
     return capt_dict, capt_dict_set
 
-if args.split == "random":
+if args.split == "rand":
     # from original data
     cap_dict_30k = get_act_caps(F30_CAP_DIR)
-else:
+elif args.split == "karp":
     cap_dict_30k, capt_dict_set = get_karp_spit()
+else:
+    ValueError("Can use rand (random) or karp(Karpathy) split")
 
 imn30k = os.listdir(F30_IM_DIR)
 cap_dict = {}
@@ -134,8 +138,9 @@ for i in range(len(rom_cap_fn)):
                      'humorous': [[start_tag] + hum_cap[i].split(' ') + [end_tag]], 
                      'actual': ''}
                     
-NUM_TRAIN = int(len(rom_cap_fn) * 0.8)
-NUM_TEST = int(len(rom_cap_fn) * 0.2)
+NUM_TRAIN = int(len(rom_cap_fn) * 0.85)
+NUM_VAL = int(len(rom_cap_fn) * 0.05)
+NUM_TEST = int(len(rom_cap_fn) * 0.1)
 print("labelled images split: train: {} test: {}".format(NUM_TRAIN, NUM_TEST))
 
 def form_dict(orig_dict, keys):
@@ -149,13 +154,15 @@ def split_labelled(cap_dict):
     keys = list(cap_dict.keys())
     keys_perm = np.random.permutation(keys)
     keys_tr = keys_perm[:NUM_TRAIN]
+    keys_vl = keys_perm[NUM_TRAIN: (NUM_TRAIN + NUM_VAL)]
+    keys_ts = keys_perm[(NUM_TRAIN + NUM_VAL):]
     keys_ts = keys_perm[NUM_TRAIN:]
     cap_tr = form_dict(cap_dict, keys_tr)
+    cap_vl = form_dict(cap_dict, keys_vl)
     cap_ts = form_dict(cap_dict, keys_ts)
-    return cap_tr, cap_ts
+    return cap_tr, cap_vl, cap_ts
 
-cap_dict, cap_ltest = split_labelled(cap_dict)
-print("Before: ", len(cap_dict))
+cap_dict, cap_lval, cap_ltest = split_labelled(cap_dict)
 cap_dict_l = cap_dict.copy()
 # add actual captions， flickr8k-subset of flickr30k
 ctr1, ctr2 = 0, 0
@@ -172,6 +179,15 @@ for imn in imn30k:
     except:
         cap_dict[imn] = {
             'actual': [[start_tag] + cap + [end_tag] for cap in cap_dict_30k[imn]]}
+    try:
+        if imn in cap_dict_30k:
+            cap_lval[imn].update(
+                {'actual': [[start_tag] + cap + [end_tag] for cap in cap_dict_30k[imn]]})
+        else:
+            cap_lval.pop(imn, None)
+            ctr1 += 1
+    except:
+        pass
     try:
         if imn in cap_dict_30k:
             cap_ltest[imn].update(
@@ -195,16 +211,18 @@ with open(os.path.join(pickles_dir, 'captions_tr.pkl'), 'wb') as wf:
 # only labelled
 with open(os.path.join(pickles_dir, 'captions_ltr.pkl'), 'wb') as wf:
     pickle.dump(file=wf, obj=cap_dict_l)
+# labelled val captions
+with open('./pickles/captions_val.pkl', 'wb') as wf:
+    pickle.dump(file=wf, obj=cap_lval)
 # labelled test captions
 with open(os.path.join(pickles_dir, 'captions_test.pkl'), 'wb') as wf:
     pickle.dump(file=wf, obj=cap_ltest)
 
 # dataset overview
-print("Training set size: {}\nLabelled Training set size: {}\nTest set size: {}".format(
-    len(cap_dict.keys()), len(cap_dict_l.keys()), len(cap_ltest.keys())))
+print(
+    "Training set size: {}\nLabelled Training set size: {}\nValidation set size: {}\nTest set size: {}".format(
+    len(cap_dict.keys()), len(cap_dict_l.keys()),len(cap_lval.keys()), len(cap_ltest.keys())))
 
-
-# TODO: create 3 evaluation files for futher usage
 # format: {'caption': 'A bicycle replica with a clock as the front wheel.',
 #  'id': 37,
 #  'image_id': 203564}
@@ -236,3 +254,7 @@ if args.gen_an:
     dump_to_json(prepare_eval(cap_ltest, 'actual'), 'test_act.json')
     dump_to_json(prepare_eval(cap_ltest, 'romantic'), 'test_rom.json')
     dump_to_json(prepare_eval(cap_ltest, 'humorous'), 'test_hum.json')
+    # val
+    dump_to_json(prepare_eval(cap_lval, 'actual'), 'val_act.json')
+    dump_to_json(prepare_eval(cap_lval, 'romantic'), 'val_rom.json')
+    dump_to_json(prepare_eval(cap_lval, 'humorous'), 'val_hum.json')

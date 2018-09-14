@@ -25,7 +25,10 @@ def inference(params, decoder, data, saver, sess):
                                                label, ground_truth=captions[1])
         captions_gen += sent
     print("Generated {} captions".format(len(captions_gen)))
-    gen_file = "./val_{}.json".format(params['gen_name'])
+    res_dir = "./results"
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
+    gen_file = os.path.join(res_dir, "val_{}.json".format(params['gen_name']))
     if os.path.exists(gen_file):
         print("Exists {}, delete it".format(gen_file))
         os.remove(gen_file)

@@ -7,34 +7,40 @@ from utils.parameters import parse_args
 from utils.data import Data
 from ops.inference import inference
 from ops.optimizers import lstm_optimizer, masked_loss
-# from utils.image_embeddings import vgg16
+
 
 params = parse_args()
 IMAGE_DIR = params['image_dir']
 PICKLES_DIR = './pickles'
 
 # TODO: coco-evaluation change
-# TODO: inspect train/test split, split according to carpathy split
 # TODO: write script, which can launch coco-eval at every some period of time
-# TODO: rewrite main file, carefully check the performance
-
 def main():
     # data
-    data = Data(IMAGE_DIR, PICKLES_DIR, params['keep_words'], params=params)
+    data = Data(
+        IMAGE_DIR, 
+        PICKLES_DIR, 
+        params['keep_words'], 
+        params=params,
+        img_embed=params["img_embed"])
     data_dict = data.dictionary
     # define placeholders
     capt_inputs = tf.placeholder(tf.int32, [None, None])
     capt_labels = tf.placeholder(tf.int32, [None, None])
     seq_length = tf.placeholder(tf.int32, [None])
-    image_embs = tf.placeholder(tf.float32, [None, 4096])  # vgg16
     # forward pass is expensive, so can use this method to reduce computation
+    if params["img_embed"]== "vgg":
+        n_features = 4096
+    elif params["img_embed"] == "resnet":
+        n_features = 2048
+    image_embs = tf.placeholder(tf.float32, [None, n_features])  # vgg16
     if params['num_captions'] > 1 and params['mode'] == 'training':
         features_tiled = tf.tile(tf.expand_dims(image_embs, 1),
                                  [1, params['num_captions'], 1])
         features_tiled = tf.reshape(features_tiled,
                                     [tf.shape(image_embs
                                               )[0] * params['num_captions'],
-                                     4096])  # [5 * b_s, 4096]
+                                     n_features])  # [5 * b_s, 4096]
     else:
         features_tiled = image_embs
     model = Decoder(capt_inputs, params['lstm_hidden'],
@@ -62,9 +68,10 @@ def main():
     # train
     saver = tf.train.Saver(tf.trainable_variables(),
                            max_to_keep=params['keep_cp'])
-    config = tf.ConfigProto()
-    # print(tf.trainable_variables())
-    config.gpu_options.allow_growth = True
+    gpu_options = tf.GPUOptions(
+                    visible_device_list=params["gpu"], 
+                    allow_growth=True)
+    config = tf.ConfigProto(gpu_options=gpu_options)
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         if params['write_summary']:

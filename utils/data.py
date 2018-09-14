@@ -6,26 +6,33 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from random import shuffle
-from utils.captions import Dictionary
-from utils.image_utils import load_image
-from utils.image_embeddings import vgg16
+from .captions import Dictionary
+from .image_utils import load_image
+from .image_embeddings import vgg16, ResNet
 
 
 class Data():
     def __init__(self, images_dir, pickles_dir='./pickles',
-                 keep_words=3, n_classes=2, params=None):
+                 keep_words=3, n_classes=2, params=None, img_embed="resnet"):
         self.images_dir = images_dir
         self.pickles_dir = pickles_dir
+        self._params = params
         # labelled (+ unlabelled)
         self.train_captions = self._load_captions('captions_ltr.pkl')
+        # self.val_captions = self._load_captions('captions_val.pkl')
         self.test_captions = self._load_captions('captions_test.pkl')
         print("Train data: ", len(self.train_captions.keys()))
         self.dictionary = Dictionary(self.train_captions, keep_words)
-        self.weights_path = './utils/vgg16_weights.npz'
+        self.img_embed = img_embed
+        if img_embed == "resnet":
+            self.weights_path = params["weights"]
+        elif img_embed == "vgg":
+            self.weights_path = './utils/vgg16_weights.npz'
+        else:
+            raise ValueError("Must choose between VGG16 or ResNet")
         self.im_features = self._extract_features_from_dir()
         # number of classes
         # self.n_classes = n_classes
-        self._params = params
 
     def _load_captions(self, f_name):
         with open(os.path.join(self.pickles_dir, f_name), 'rb') as rf:
@@ -36,7 +43,7 @@ class Data():
         """Batch generator
         Arguments:
             batch_size: batch size
-            set: dataset for this generator (train, test)
+            set: dataset for this generator (train, val, test)
             im_features: whether return image embedding vector (or image)
             get_name: get image_ids, used for generation json
             label: caption label
@@ -94,24 +101,20 @@ class Data():
             hum_c = self.dictionary.index_caption(hum_c[0])
             rom_c = self.dictionary.index_caption(rom_c[0])
             # randomly choose one of the 5 actual captions
-            # if mult_captions and self._params['num_captions'] > 1:
-            #     ctr = i
-            #     for j in range(self._params['num_captions']):
-            #         try:
-            #             act_c[j]
-            #         except:
-            #             raise ValueError("Wtf")
-            #         labelled.append(self.dictionary.index_caption(act_c[j]))
-            #         lengths[ctr] = len(act_c[j]) - 1
-            #         ctr += 1
-            # else:
-            rand_cap = np.random.randint(low=0, high=len(act_c))
-            act_c = self.dictionary.index_caption(act_c[rand_cap])
-            # important, label-label_index correspondance
-            cap_list = [act_c, hum_c, rom_c]
-            # what will be labelled, what unlabelled
-            labelled.append(cap_list[label])
-            lengths[i] = len(labelled[i]) - 1
+            if mult_captions and self._params['num_captions'] > 1:
+                ctr = i
+                for j in range(self._params['num_captions']):
+                    labelled.append(self.dictionary.index_caption(act_c[j]))
+                    lengths[ctr] = len(act_c[j]) - 1
+                    ctr += 1
+            else:
+                rand_cap = np.random.randint(low=0, high=len(act_c))
+                act_c = self.dictionary.index_caption(act_c[rand_cap])
+                # important, label-label_index correspondance
+                cap_list = [act_c, hum_c, rom_c]
+                # what will be labelled, what unlabelled
+                labelled.append(cap_list[label])
+                lengths[i] = len(labelled[i]) - 1
         pad_l = len(max(labelled, key=len))
         captions_inp = np.array([cap[:-1] + [0] * (
             pad_l - len(cap)) for cap in labelled])
@@ -144,11 +147,15 @@ class Data():
         """
         feature_dict = {}
         data_dir = self.images_dir
+        if self.img_embed == "resnet":
+            embed_file = os.path.join("./pickles/", "img_embed_res.pickle")
+        else:
+            embed_file = os.path.join("./pickles/", "img_embed_vgg.pickle")
         try:
-            with open(
-                "./pickles/" + data_dir.split('/')[-2] + '.pickle', 'rb') as rf:
+            with open(embed_file, 'rb') as rf:
                 print("Loading prepared feature vector from {}".format(
-                    "./pickles/" + data_dir.split('/')[-2] + '.pickle'))
+                    embed_file
+                ))
                 feature_dict = pickle.load(rf)
         except:
             print("Extracting features")
@@ -159,15 +166,27 @@ class Data():
                 input_img = tf.placeholder(tf.float32, [None,
                                                         im_shape[0],
                                                         im_shape[1], 3])
-                image_embeddings = vgg16(input_img)
-                features = image_embeddings.fc2
-                config = tf.ConfigProto()
-                config.gpu_options.allow_growth = True
-            with tf.Session(graph=im_embed) as sess:
+                if self.img_embed == "resnet":
+                    image_embeddings = ResNet(50)
+                    is_training = tf.constant(False)
+                    features = image_embeddings(input_img, is_training)
+                    saver = tf.train.Saver()
+                else:
+                    image_embeddings = vgg16(input_img)
+                    features = image_embeddings.fc2
+                gpu_options = tf.GPUOptions(
+                    visible_device_list=self._params["gpu"], 
+                    allow_growth=True)
+                config = tf.ConfigProto(gpu_options=gpu_options)
+            with tf.Session(graph=im_embed, config=config) as sess:
                 if len(list(glob(data_dir + '*.jpg'))) == 0:
                     raise FileNotFoundError()
-                print("loading imagenet weights")
-                image_embeddings.load_weights(self.weights_path, sess)
+                if self.img_embed == "resnet":
+                    print("loading resnet weights")
+                    saver.restore(sess, self.weights_path)
+                else:
+                    print("loading vgg16 imagenet weights")
+                    image_embeddings.load_weights(self.weights_path, sess)
                 for img_path in tqdm(glob(data_dir + '*.jpg')):
                     img = load_image(img_path)
                     img = np.expand_dims(img, axis=0)
@@ -175,7 +194,6 @@ class Data():
                     # ex. COCO_val2014_0000000XXXXX.jpg
                     feature_dict[img_path.split('/')[-1]] = f_vector
             if save_pickle:
-                with open(
-                    "./pickles/" + data_dir.split('/')[-2] + '.pickle', 'wb') as wf:
+                with open(embed_file, 'wb') as wf:
                     pickle.dump(feature_dict, wf)
         return feature_dict
