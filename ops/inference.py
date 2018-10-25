@@ -11,11 +11,11 @@ def inference(params, decoder, data, saver, sess):
     captions_gen = []
     print("Generating captions for {} file".format(params['gen_set']))
     label = params['gen_label']
-    for captions, lengths, image_f, names in data.get_batch(100,
-                                                            set=params['gen_set'],
-                                                            get_names=True,
-                                                            label=label,
-                                                            mode='gen'):
+    for captions, _, image_f, names in data.get_batch(100,
+                                                        set=params['gen_set'],
+                                                        get_names=True,
+                                                        label=label,
+                                                        mode='gen'):
         if params['sample_gen'] == 'beam_search':
             sent = decoder.beam_search(sess, names, image_f,
                                        label, ground_truth=captions[1],
@@ -28,11 +28,11 @@ def inference(params, decoder, data, saver, sess):
     res_dir = "./results"
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
-    gen_file = os.path.join(res_dir, "val_{}.json".format(params['gen_name']))
+    gen_file = os.path.join(res_dir, "{}_{}.json".format(
+        params['gen_set'], params['gen_name']))
     if os.path.exists(gen_file):
-        print("Exists {}, delete it".format(gen_file))
+        print("")
         os.remove(gen_file)
-        print(os.listdir('.'))
     with open(gen_file, 'w') as wj:
         print("saving val json file into ", gen_file)
         json.dump(captions_gen, wj)

@@ -58,17 +58,17 @@ class FactoredLSTMCell():
                              % inputs_shape)
 
         one = tf.constant(1, dtype=tf.int32)
-        self.ui, self.uf, self.uo, self.uc = tf.split(
-            value=self._u, num_or_size_splits=4, axis=one)
+        with tf.variable_scope("general"):
+            self.ui, self.uf, self.uo, self.uc = tf.split(
+                value=self._u, num_or_size_splits=4, axis=one)
+            self.vi, self.vf, self.vo, self.vc = tf.split(
+                value=self._v, num_or_size_splits=4, axis=one)
+            self.whi, self.whf, self.who, self.whc = tf.split(
+                value=self._wh, num_or_size_splits=4, axis=one)
+        with tf.variable_scope("specific"):
+            self.si, self.sf, self.so, self.sc = tf.split(
+                value=self._s, num_or_size_splits=4, axis=one)
 
-        self.vi, self.vf, self.vo, self.vc = tf.split(
-            value=self._v, num_or_size_splits=4, axis=one)
-
-        self.si, self.sf, self.so, self.sc = tf.split(
-            value=self._s, num_or_size_splits=4, axis=one)
-
-        self.whi, self.whf, self.who, self.whc = tf.split(
-            value=self._wh, num_or_size_splits=4, axis=one)
 
         self.built = True
 

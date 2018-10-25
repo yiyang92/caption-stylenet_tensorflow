@@ -53,6 +53,7 @@ F30_IM_DIR = args.f30_im_dir
 start_tag = '<BOS>'
 end_tag = '<EOS>'
 
+
 def style_caps(pfn, capfn):
     with open(pfn, 'rb') as rf:
         cap_fn = pickle.load(rf)
@@ -83,6 +84,7 @@ rom_cap_fn, rom_cap = style_caps(
 print(
     "File names lists are equal in order: {}".format(hum_cap_fn == rom_cap_fn))
 
+
 def get_act_caps(cap_path):
     cap_files = list(glob(cap_path + '*.txt'))
     cap_dict = {}
@@ -107,7 +109,7 @@ def get_act_caps(cap_path):
 
 def get_karp_spit():
     """Karpathy split, returns dict f_name: [captions]"""
-    print("WARNING: Karpathy split not working peopwrly now, use random split")
+    print("WARNING: Karpathy split not working properly now, use random split")
     with open(args.karp_path, "r") as rf:
         carp_split = json.load(rf)
     if not carp_split["dataset"] == "flickr30k":
@@ -138,16 +140,18 @@ for i in range(len(rom_cap_fn)):
                      'humorous': [[start_tag] + hum_cap[i].split(' ') + [end_tag]], 
                      'actual': ''}
                     
-NUM_TRAIN = int(len(rom_cap_fn) * 0.85)
+NUM_TRAIN = int(len(rom_cap_fn) * 0.80)
 NUM_VAL = int(len(rom_cap_fn) * 0.05)
-NUM_TEST = int(len(rom_cap_fn) * 0.1)
+NUM_TEST = int(len(rom_cap_fn) * 0.15)
 print("labelled images split: train: {} test: {}".format(NUM_TRAIN, NUM_TEST))
+
 
 def form_dict(orig_dict, keys):
     dest_dict = {}
     for key in keys:
         dest_dict[key] = orig_dict[key]
     return dest_dict
+
 
 def split_labelled(cap_dict):
     # split into val and test
@@ -156,15 +160,15 @@ def split_labelled(cap_dict):
     keys_tr = keys_perm[:NUM_TRAIN]
     keys_vl = keys_perm[NUM_TRAIN: (NUM_TRAIN + NUM_VAL)]
     keys_ts = keys_perm[(NUM_TRAIN + NUM_VAL):]
-    keys_ts = keys_perm[NUM_TRAIN:]
     cap_tr = form_dict(cap_dict, keys_tr)
     cap_vl = form_dict(cap_dict, keys_vl)
     cap_ts = form_dict(cap_dict, keys_ts)
     return cap_tr, cap_vl, cap_ts
 
+
 cap_dict, cap_lval, cap_ltest = split_labelled(cap_dict)
 cap_dict_l = cap_dict.copy()
-# add actual captions， flickr8k-subset of flickr30k
+# add actual captions, flickr8k-subset of flickr30k
 ctr1, ctr2 = 0, 0
 for imn in imn30k:
     if imn == 'readme.txt':
@@ -227,8 +231,8 @@ print(
 #  'id': 37,
 #  'image_id': 203564}
 # use json dump for list of dictionaries
-
-
+# TODO: check stylized captions ground truth !!!
+# TODO: check caption generation labels !!!
 def prepare_eval(caption_dict, label):
     # annotations
     eval_d_list = []
@@ -241,7 +245,12 @@ def prepare_eval(caption_dict, label):
                    'file_name': imid}
         eval_d_list.append(ev_dict)
         img_info.append(im_dict)
-    return {'annotations': eval_d_list, 'images': img_info}
+    return {
+        'annotations': eval_d_list,
+        'images': img_info,
+        'type': 'captions',
+        'licenses': [{}],
+        'info': {'description': "FlickrStyle10k Evaluation"}}
 
 if args.gen_an:
     if not os.path.exists('./annotations'):

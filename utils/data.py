@@ -19,7 +19,7 @@ class Data():
         self._params = params
         # labelled (+ unlabelled)
         self.train_captions = self._load_captions('captions_ltr.pkl')
-        # self.val_captions = self._load_captions('captions_val.pkl')
+        self.val_captions = self._load_captions('captions_val.pkl')
         self.test_captions = self._load_captions('captions_test.pkl')
         print("Train data: ", len(self.train_captions.keys()))
         self.dictionary = Dictionary(self.train_captions, keep_words)
@@ -53,10 +53,13 @@ class Data():
         imn_batch = [None] * batch_size
         if set == 'train':
             self._iterable = self.train_captions.copy()
+        elif set == 'val':
+            self._iterable = self.val_captions.copy()
         else:
             self._iterable = self.test_captions.copy()
         im_names = list(self._iterable.keys())
-        shuffle(im_names)
+        if mode != 'gen':
+            shuffle(im_names)
         mult_captions = True if label == 'actual' and mode != 'gen' else False
         for i, item in enumerate(im_names):
             inx = i % batch_size
@@ -105,7 +108,7 @@ class Data():
                 ctr = i
                 for j in range(self._params['num_captions']):
                     labelled.append(self.dictionary.index_caption(act_c[j]))
-                    lengths[ctr] = len(act_c[j]) - 1
+                    lengths[ctr] = len(act_c[j])
                     ctr += 1
             else:
                 rand_cap = np.random.randint(low=0, high=len(act_c))
@@ -114,7 +117,7 @@ class Data():
                 cap_list = [act_c, hum_c, rom_c]
                 # what will be labelled, what unlabelled
                 labelled.append(cap_list[label])
-                lengths[i] = len(labelled[i]) - 1
+                lengths[i] = len(labelled[i])
         pad_l = len(max(labelled, key=len))
         captions_inp = np.array([cap[:-1] + [0] * (
             pad_l - len(cap)) for cap in labelled])

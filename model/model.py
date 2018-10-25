@@ -1,5 +1,7 @@
 import tensorflow as tf
+from tensorflow.python.ops.rnn_cell_impl import LSTMStateTuple
 import numpy as np
+
 from model.lstm_cell import FactoredLSTMCell, rnn_placeholders
 from utils.top_n import TopN, Beam
 
@@ -103,6 +105,8 @@ class Decoder():
         if mode == 'train_capt' or mode == 'gen':
             images_fv = tf.layers.dense(image_embs, self._embed_size,
                                         name='imf_emb')
+            #c = h = images_fv
+            #first_state = LSTMStateTuple(c, h)
             with tf.variable_scope(rnn_scope, reuse=tf.AUTO_REUSE):
                 _, first_state = self._lstm(images_fv, init_state)
         elif mode == 'train_lmh' or mode == 'train_lmr':
@@ -207,8 +211,8 @@ class Decoder():
             cap_list[i]['caption'] = ' '.join([word for word in sentence
                                                if word not in ['<BOS>',
                                                                '<EOS>']])
-            print(cap_list[i]['caption'] + ' ' + cap_list[i]['label'])
-            print("Ground truth caption: ", cap_list[i]['ground_truth'])
+            # print(cap_list[i]['caption'] + ' ' + cap_list[i]['label'])
+            # print("Ground truth caption: ", cap_list[i]['ground_truth'])
         return cap_list, cap_raw
 
     def beam_search(self, sess, picture_ids, in_pictures, label,
@@ -331,8 +335,8 @@ class Decoder():
                                                    if word not in [seed,
                                                                    stop_word_idx]]
                 cap_list[im]['caption'] = ' '.join(capt)
-            print(cap_list[im]['caption'] + ' ' + cap_list[im]['label'])
-            print("Ground truth caption: ", cap_list[im]['ground_truth'])
+            # print(cap_list[im]['caption'] + ' ' + cap_list[im]['label'])
+            # print("Ground truth caption: ", cap_list[im]['ground_truth'])
             # return list of beam candidates
             if ret_beams:
                 c_list = []

@@ -126,7 +126,7 @@ def main():
                                 opt_loss, optim = lmr_loss, lmr_opt
                             vloss_ = sess.run([opt_loss], feed)
                             losses.append(vloss_)
-                        print("{} Validation Model: Epoch: {} Loss: {}".format(
+                        print("Validation Model: {} Epoch: {} Loss: {}".format(
                             label, e, np.mean(losses)))
                         # save model
                         if not os.path.exists("./checkpoints"):
