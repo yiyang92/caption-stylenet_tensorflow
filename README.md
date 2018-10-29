@@ -21,7 +21,7 @@ factorized LSTM.
 - place preprocessed captions into ./pickles folder
 - download VGG16 weights from: https://yadi.sk/d/V6Rfzfei3TdKCH
 - place downloaded weights to ./utils folder
-- don't forget to download data and set the path int the parameters -(https://zhegan27.github.io/Papers/FlickrStyle_v0.9.zip)- flickr_style7k
+- don't forget to download data and set the path int the parameters -(https://zhegan27.github.io/Papers/FlickrStyle_v0.9.zip)- flickr_style7k, FLickr30k: http://web.engr.illinois.edu/~bplumme2/Flickr30kEntities/
 - to train launch:
 ```
  python main.py --gpu <YOUR_GPU> --tr_style <both, romantic, humorous>
@@ -35,8 +35,3 @@ factorized LSTM.
   python main.py --gpu <YOUR_GPU> <Other parameters you used> --mode inference
   --gen_label <romantic, humorous, actual> --gen_name <default 00>
 ```
-
-## TODO
-- change VGG16 to ResNet
-- try to get better results (results are worse than reported in paper)
-- add generation for arbitary photos
